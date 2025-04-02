@@ -1,73 +1,119 @@
-import { PrismaClient, Role } from '@prisma/client';
-import { hash } from 'bcryptjs';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Créer l'administrateur
-  const adminPassword = await hash('admin123', 12);
-  const admin = await prisma.user.create({
+  // Créer une organisation
+  const organization = await prisma.organization.create({
     data: {
-      name: 'Admin',
-      email: 'admin@example.com',
-      password: adminPassword,
-      role: Role.ADMIN,
-      department: 'Administration'
+      name: 'Ma Société',
+      subdomain: 'ma-societe',
+      description: 'Une société de développement logiciel',
     },
   });
 
-  // Créer les utilisateurs
-  const userPassword = await hash('user123', 12);
-  const sophie = await prisma.user.create({
-    data: {
-      name: 'Sophie Martin',
-      email: 'sophie@example.com',
-      password: userPassword,
-      role: Role.USER,
-      department: 'Développement'
+  // Créer un utilisateur de test
+  const hashedPassword = await bcrypt.hash('password123', 10);
+  const user = await prisma.user.upsert({
+    where: { email: 'test@example.com' },
+    update: {},
+    create: {
+      email: 'test@example.com',
+      name: 'Utilisateur Test',
+      password: hashedPassword,
+      role: 'ADMIN',
+      organizationId: organization.id,
     },
   });
 
-  const thomas = await prisma.user.create({
+  // Créer quelques projets
+  const project1 = await prisma.project.create({
     data: {
-      name: 'Thomas Bernard',
-      email: 'thomas@example.com',
-      password: userPassword,
-      role: Role.USER,
-      department: 'Design'
+      name: 'E-commerce',
+      description: 'Développement d\'un site e-commerce avec Next.js',
+      status: 'ACTIVE',
+      organizationId: organization.id,
+      priority: 'HIGH',
+      ownerId: user.id,
+      teamMembers: {
+        create: {
+          userId: user.id,
+          role: 'OWNER'
+        }
+      }
     },
   });
 
-  const julie = await prisma.user.create({
+  const project2 = await prisma.project.create({
     data: {
-      name: 'Julie Dubois',
-      email: 'julie@example.com',
-      password: userPassword,
-      role: Role.USER,
-      department: 'Produit'
+      name: 'Mobile App',
+      description: 'Développement d\'une application mobile React Native',
+      status: 'ACTIVE',
+      organizationId: organization.id,
+      priority: 'HIGH',
+      ownerId: user.id,
+      teamMembers: {
+        create: {
+          userId: user.id,
+          role: 'OWNER'
+        }
+      }
     },
   });
 
-  // Créer quelques messages de test
-  await prisma.message.create({
-    data: {
-      content: 'Bonjour Sophie ! Comment vas-tu ?',
-      senderId: thomas.id,
-      receiverId: sophie.id,
-      type: 'text'
-    }
+  // Créer des tâches pour les projets
+  await prisma.task.createMany({
+    data: [
+      {
+        title: 'Configuration du projet',
+        description: 'Mettre en place l\'environnement de développement',
+        status: 'DONE',
+        priority: 'HIGH',
+        projectId: project1.id,
+        assigneeId: user.id,
+        creatorId: user.id
+      },
+      {
+        title: 'Conception de la base de données',
+        description: 'Créer le schéma de la base de données',
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
+        projectId: project1.id,
+        assigneeId: user.id,
+        creatorId: user.id
+      },
+      {
+        title: 'Développement du panier',
+        description: 'Implémenter la fonctionnalité du panier',
+        status: 'TODO',
+        priority: 'MEDIUM',
+        projectId: project1.id,
+        assigneeId: user.id,
+        creatorId: user.id
+      },
+      {
+        title: 'Design de l\'interface',
+        description: 'Créer les maquettes de l\'application',
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
+        projectId: project2.id,
+        assigneeId: user.id,
+        creatorId: user.id
+      },
+      {
+        title: 'Configuration React Native',
+        description: 'Mettre en place l\'environnement React Native',
+        status: 'TODO',
+        priority: 'MEDIUM',
+        projectId: project2.id,
+        assigneeId: user.id,
+        creatorId: user.id
+      },
+    ],
   });
 
-  await prisma.message.create({
-    data: {
-      content: 'Très bien Thomas, merci ! Et toi ?',
-      senderId: sophie.id,
-      receiverId: thomas.id,
-      type: 'text'
-    }
-  });
-
-  console.log('Base de données initialisée avec succès !');
+  console.log('Données de test ajoutées avec succès !');
 }
 
 main()
