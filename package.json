@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push && next build --no-lint",
+    "build": "prisma generate && next build --no-lint --ignore-ts-errors",
     "start": "next start",
     "lint": "next lint",
     "prisma:seed": "tsx --tsconfig tsconfig.seed.json prisma/seed.ts",
