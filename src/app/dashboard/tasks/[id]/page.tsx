@@ -117,6 +117,7 @@ export default function TaskDetailsPage({ params }: { params: { id: string } }) 
     LOW: 'bg-gray-100 text-gray-800',
     MEDIUM: 'bg-orange-100 text-orange-800',
     HIGH: 'bg-red-100 text-red-800',
+    URGENT: 'bg-purple-100 text-purple-800',
   };
 
   return (
@@ -214,6 +215,7 @@ export default function TaskDetailsPage({ params }: { params: { id: string } }) 
                     <option value="LOW">Basse</option>
                     <option value="MEDIUM">Moyenne</option>
                     <option value="HIGH">Haute</option>
+                    <option value="URGENT">Urgente</option>
                   </select>
                   <input
                     type="date"
@@ -231,7 +233,8 @@ export default function TaskDetailsPage({ params }: { params: { id: string } }) 
                   </span>
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${priorityColors[task.priority]}`}>
                     Priorité {task.priority === 'LOW' ? 'Basse' :
-                             task.priority === 'MEDIUM' ? 'Moyenne' : 'Haute'}
+                             task.priority === 'MEDIUM' ? 'Moyenne' :
+                             task.priority === 'HIGH' ? 'Haute' : 'Urgente'}
                   </span>
                   {task.dueDate && (
                     <span className="flex items-center gap-2 text-gray-600">

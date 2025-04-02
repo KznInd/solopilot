@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { hash } from 'bcryptjs';
 
 export async function GET() {
   try {
     // Créer un utilisateur de test s'il n'existe pas
+    const hashedPassword = await hash('password123', 10);
     const testUser = await prisma.user.upsert({
       where: { email: 'test@example.com' },
       update: {},
       create: {
         email: 'test@example.com',
         name: 'Utilisateur Test',
+        password: hashedPassword,
         role: 'USER',
       },
     });

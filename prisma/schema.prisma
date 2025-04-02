@@ -33,22 +33,37 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  subdomain   String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  projects    Project[]
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String    @unique
   password      String
+  image         String?
   role          Role      @default(USER)
   department    String?
+  organizationId String?
+  organization  Organization? @relation(fields: [organizationId], references: [id])
+  resetToken    String?
+  resetTokenExpiry DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  accounts            Account[]
-  sessions            Session[]
-  createdTasks        Task[]       @relation("CreatedTasks")
-  assignedTasks       Task[]       @relation("AssignedTasks")
-  notes               Note[]       @relation("CreatedNotes")
-  attachments         Attachment[] @relation("CreatedAttachments")
-  comments            Comment[]
+  accounts      Account[]
+  sessions      Session[]
+  createdTasks  Task[]    @relation("CreatedTasks")
+  assignedTasks Task[]    @relation("AssignedTasks")
+  notes         Note[]    @relation("CreatedNotes")
+  attachments   Attachment[] @relation("CreatedAttachments")
   createdTickets      Ticket[]     @relation("TicketCreator")
   assignedTickets     Ticket[]     @relation("TicketAssignee")
   createdEvents       Event[]      @relation("CreatedEvents")
@@ -57,25 +72,29 @@ model User {
   teamMemberships     TeamMember[]
   sentMessages        Message[]    @relation("SentMessages")
   receivedMessages    Message[]    @relation("ReceivedMessages")
+  comments            Comment[]    @relation("CommentCreator")
 }
 
 model Project {
-  id          String        @id @default(cuid())
-  name        String
-  description String?
-  status      ProjectStatus @default(ACTIVE)
-  priority    Priority
-  dueDate     DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  ownerId     String
-  startDate   DateTime?
-  attachments Attachment[]
-  comments    Comment[]
-  events      Event[]
-  owner       User          @relation("ProjectOwner", fields: [ownerId], references: [id])
-  tasks       Task[]
-  teamMembers TeamMember[]
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  organizationId String?
+  organization  Organization? @relation(fields: [organizationId], references: [id])
+  status        ProjectStatus @default(PLANNING)
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  priority      Priority
+  dueDate       DateTime?
+  attachments   Attachment[]
+  comments      Comment[]
+  events        Event[]
+  owner         User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  tasks         Task[]
+  teamMembers   TeamMember[]
+  ownerId       String
 }
 
 model TeamMember {
@@ -124,7 +143,7 @@ model Comment {
   taskId    String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation("CommentCreator", fields: [userId], references: [id])
 
   @@index([userId])
   @@index([projectId])
@@ -243,6 +262,7 @@ enum ProjectStatus {
   ACTIVE
   COMPLETED
   ON_HOLD
+  PLANNING
 }
 
 enum Priority {

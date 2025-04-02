@@ -2,6 +2,40 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth.config';
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+
+const eventSelect = {
+  creator: {
+    select: {
+      id: true,
+      name: true,
+      email: true
+    }
+  },
+  project: {
+    select: {
+      id: true,
+      name: true
+    }
+  },
+  task: {
+    select: {
+      id: true,
+      title: true
+    }
+  },
+  participants: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      }
+    }
+  }
+} satisfies Prisma.EventSelect;
 
 export async function GET(
   request: NextRequest,
@@ -18,40 +52,7 @@ export async function GET(
 
     const event = await prisma.event.findUnique({
       where: { id: params.id },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true
-          }
-        },
-        project: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        task: {
-          select: {
-            id: true,
-            title: true
-          }
-        },
-        participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true
-              }
-            }
-          }
-        }
-      }
+      include: eventSelect
     });
 
     if (!event) {
@@ -62,10 +63,10 @@ export async function GET(
     }
 
     const isParticipant = event.participants.some(
-      p => p.user.id === session.user.id
+      (p) => p.user.id === session.user.id
     );
 
-    if (event.createdById !== session.user.id && !isParticipant) {
+    if (event.creatorId !== session.user.id && !isParticipant) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 403 }
@@ -107,7 +108,7 @@ export async function PUT(
       );
     }
 
-    if (event.createdById !== session.user.id) {
+    if (event.creatorId !== session.user.id) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 403 }
@@ -132,15 +133,15 @@ export async function PUT(
         where: {
           eventId: params.id,
           userId: {
-            notIn: participants
+            notIn: participants as string[]
           }
         }
       });
 
       // Ajouter les nouveaux participants
       const existingParticipants = event.participants.map(p => p.userId);
-      const newParticipants = participants.filter(
-        (userId: string) => !existingParticipants.includes(userId)
+      const newParticipants = (participants as string[]).filter(
+        userId => !existingParticipants.includes(userId)
       );
 
       await Promise.all(
@@ -167,40 +168,7 @@ export async function PUT(
         project: projectId ? { connect: { id: projectId } } : undefined,
         task: taskId ? { connect: { id: taskId } } : undefined
       },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true
-          }
-        },
-        project: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        task: {
-          select: {
-            id: true,
-            title: true
-          }
-        },
-        participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true
-              }
-            }
-          }
-        }
-      }
+      include: eventSelect
     });
 
     return NextResponse.json(updatedEvent);
@@ -237,7 +205,7 @@ export async function DELETE(
       );
     }
 
-    if (event.createdById !== session.user.id) {
+    if (event.creatorId !== session.user.id) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 403 }
@@ -248,7 +216,7 @@ export async function DELETE(
       where: { id: params.id }
     });
 
-    return new NextResponse(null, { status: 204 });
+    return NextResponse.json({ message: 'Événement supprimé avec succès' });
   } catch (error) {
     console.error('Erreur lors de la suppression de l\'événement:', error);
     return NextResponse.json(

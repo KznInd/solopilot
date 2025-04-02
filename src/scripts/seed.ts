@@ -34,11 +34,14 @@ async function main() {
       description: 'Développement d\'un site e-commerce avec Next.js',
       status: 'ACTIVE',
       organizationId: organization.id,
-      members: {
-        connect: {
-          id: user.id,
-        },
-      },
+      priority: 'HIGH',
+      ownerId: user.id,
+      teamMembers: {
+        create: {
+          userId: user.id,
+          role: 'OWNER'
+        }
+      }
     },
   });
 
@@ -48,11 +51,14 @@ async function main() {
       description: 'Développement d\'une application mobile React Native',
       status: 'ACTIVE',
       organizationId: organization.id,
-      members: {
-        connect: {
-          id: user.id,
-        },
-      },
+      priority: 'HIGH',
+      ownerId: user.id,
+      teamMembers: {
+        create: {
+          userId: user.id,
+          role: 'OWNER'
+        }
+      }
     },
   });
 
@@ -66,6 +72,7 @@ async function main() {
         priority: 'HIGH',
         projectId: project1.id,
         assigneeId: user.id,
+        creatorId: user.id
       },
       {
         title: 'Conception de la base de données',
@@ -74,6 +81,7 @@ async function main() {
         priority: 'HIGH',
         projectId: project1.id,
         assigneeId: user.id,
+        creatorId: user.id
       },
       {
         title: 'Développement du panier',
@@ -82,6 +90,7 @@ async function main() {
         priority: 'MEDIUM',
         projectId: project1.id,
         assigneeId: user.id,
+        creatorId: user.id
       },
       {
         title: 'Design de l\'interface',
@@ -90,6 +99,7 @@ async function main() {
         priority: 'HIGH',
         projectId: project2.id,
         assigneeId: user.id,
+        creatorId: user.id
       },
       {
         title: 'Configuration React Native',
@@ -98,36 +108,7 @@ async function main() {
         priority: 'MEDIUM',
         projectId: project2.id,
         assigneeId: user.id,
-      },
-    ],
-  });
-
-  // Créer quelques documents
-  await prisma.document.createMany({
-    data: [
-      {
-        name: 'Cahier des charges',
-        type: 'pdf',
-        size: 1024,
-        url: 'https://example.com/docs/cahier-des-charges.pdf',
-        organizationId: organization.id,
-        uploadedById: user.id,
-      },
-      {
-        name: 'Guide de style',
-        type: 'pdf',
-        size: 512,
-        url: 'https://example.com/docs/guide-de-style.pdf',
-        organizationId: organization.id,
-        uploadedById: user.id,
-      },
-      {
-        name: 'Documentation API',
-        type: 'md',
-        size: 256,
-        url: 'https://example.com/docs/api-docs.md',
-        organizationId: organization.id,
-        uploadedById: user.id,
+        creatorId: user.id
       },
     ],
   });

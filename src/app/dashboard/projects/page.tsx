@@ -26,6 +26,7 @@ type ProjectWithDetails = Project & {
   _count: {
     tasks: number;
     comments: number;
+    completedTasks: number;
   };
 };
 

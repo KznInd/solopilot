@@ -2,6 +2,49 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+
+interface RawNotification {
+  id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  startDate: Date;
+  endDate: Date;
+  status: string;
+  projectId: string | null;
+  projectName: string | null;
+  taskId: string | null;
+  taskTitle: string | null;
+  createdById: string;
+  createdByName: string | null;
+  createdByEmail: string;
+  createdByImage: string | null;
+}
+
+interface FormattedNotification {
+  id: string;
+  title: string;
+  description: string | null;
+  startDate: string;
+  endDate: string;
+  type: string;
+  project: {
+    id: string;
+    name: string;
+  } | null;
+  task: {
+    id: string;
+    title: string;
+  } | null;
+  createdBy: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  };
+  status: string;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,7 +88,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Récupérer les notifications avec une requête SQL directe
-    const notifications = await prisma.$queryRaw`
+    const notifications = await prisma.$queryRaw<RawNotification[]>`
       SELECT 
         e.id,
         e.title,
@@ -66,13 +109,13 @@ export async function GET(request: NextRequest) {
       JOIN "UserEvent" ue ON e.id = ue."eventId"
       LEFT JOIN "Project" p ON e."projectId" = p.id
       LEFT JOIN "Task" t ON e."taskId" = t.id
-      JOIN "User" u ON e."createdById" = u.id
+      JOIN "User" u ON e."creatorId" = u.id
       WHERE ue."userId" = ${session.user.id}
       ORDER BY e."startDate" DESC
     `;
 
     // Formater les notifications pour correspondre à l'interface Notification
-    const formattedNotifications = notifications.map((n: any) => ({
+    const formattedNotifications: FormattedNotification[] = notifications.map(n => ({
       id: n.id,
       title: n.title,
       description: n.description,
@@ -81,11 +124,11 @@ export async function GET(request: NextRequest) {
       type: n.type,
       project: n.projectId ? {
         id: n.projectId,
-        name: n.projectName
+        name: n.projectName!
       } : null,
       task: n.taskId ? {
         id: n.taskId,
-        title: n.taskTitle
+        title: n.taskTitle!
       } : null,
       createdBy: {
         id: n.createdById,

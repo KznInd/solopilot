@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import SimplePeer from 'simple-peer';
-import io from 'socket.io-client';
+import io, { Socket } from 'socket.io-client';
 import { VideoCameraIcon, MicrophoneIcon, SpeakerXMarkIcon, ComputerDesktopIcon, ChatBubbleLeftRightIcon, UserGroupIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import CallNotification from './CallNotification';
 import { useSession } from 'next-auth/react';
@@ -23,8 +23,7 @@ export default function VideoCall({ roomId, userId, onClose }: VideoCallProps) {
   const [messages, setMessages] = useState<Array<{ text: string; sender: string }>>([]);
   const [newMessage, setNewMessage] = useState('');
   const [incomingCall, setIncomingCall] = useState<{ callerName: string; roomId: string; from: string } | null>(null);
-  const socketRef = useRef<SocketIOClient.Socket>();
-  const userVideoRef = useRef<HTMLVideoElement>(null);
+  const socketRef = useRef<Socket>();
   const screenStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
@@ -98,7 +97,7 @@ export default function VideoCall({ roomId, userId, onClose }: VideoCallProps) {
     const peer = new SimplePeer({
       initiator: true,
       trickle: false,
-      stream
+      stream: stream || undefined
     });
 
     peer.on('signal', signal => {
@@ -199,7 +198,6 @@ export default function VideoCall({ roomId, userId, onClose }: VideoCallProps) {
         <div id="video-grid" className="w-full h-full grid grid-cols-2 gap-4 p-4">
           {stream && (
             <video
-              ref={userVideoRef}
               autoPlay
               playsInline
               muted

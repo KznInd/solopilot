@@ -1,46 +1,24 @@
-import type { AuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import { PrismaAdapter } from '@auth/prisma-adapter';
-import { prisma } from '@/lib/prisma';
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { prisma } from "@/lib/prisma";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { NextAuthOptions } from "next-auth";
+import { Role } from "@prisma/client";
 import { compare } from 'bcryptjs';
-import { Role } from '@prisma/client';
 
 interface UserWithPassword {
   id: string;
-  email: string | null;
+  email: string;
   name: string | null;
   password: string;
   role: Role;
+  image: string | null;
 }
 
-// Étendre les types de next-auth
-declare module "next-auth" {
-  interface User {
-    id: string;
-    role: Role;
-  }
-  interface Session {
-    user: {
-      id: string;
-      role: Role;
-      email: string;
-      name?: string | null;
-    }
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-    role: Role;
-  }
-}
-
-export const authOptions: AuthOptions = {
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
-      name: 'Credentials',
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
@@ -54,9 +32,9 @@ export const authOptions: AuthOptions = {
           where: {
             email: credentials.email
           }
-        });
+        }) as UserWithPassword | null;
 
-        if (!user) {
+        if (!user || !user.password) {
           return null;
         }
 
@@ -69,31 +47,36 @@ export const authOptions: AuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
+          name: user.name || '',
           role: user.role,
+          image: user.image || null
         };
       }
     })
   ],
   session: {
-    strategy: 'jwt'
+    strategy: "jwt"
   },
   pages: {
-    signIn: '/login',
+    signIn: "/login",
   },
   callbacks: {
     async session({ session, token }) {
       if (session?.user) {
         session.user.id = token.sub as string;
-        session.user.role = token.role as string;
+        session.user.role = token.role as Role;
+        session.user.name = session.user.name || '';
+        session.user.image = token.picture || null;
       }
       return session;
     },
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
+        token.picture = user.image;
       }
       return token;
     }
-  }
+  },
+  secret: process.env.NEXTAUTH_SECRET
 }; 

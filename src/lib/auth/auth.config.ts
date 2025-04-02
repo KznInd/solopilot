@@ -20,15 +20,24 @@ export const authOptions: AuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            organizationId: true,
+            image: true,
+            password: true
+          }
         });
 
-        if (!user) {
+        if (!user || !user.name) {
           throw new Error('Utilisateur non trouvé');
         }
 
-        const isPasswordValid = await compare(credentials.password, user.password);
+        const isValid = await compare(credentials.password, user.password);
 
-        if (!isPasswordValid) {
+        if (!isValid) {
           throw new Error('Mot de passe incorrect');
         }
 
@@ -38,6 +47,7 @@ export const authOptions: AuthOptions = {
           name: user.name,
           role: user.role,
           organizationId: user.organizationId,
+          image: user.image
         };
       },
     }),
@@ -51,9 +61,15 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.user.organizationId = token.organizationId;
+        return {
+          ...session,
+          user: {
+            ...session.user,
+            id: token.id,
+            role: token.role,
+            organizationId: token.organizationId
+          }
+        };
       }
       return session;
     },

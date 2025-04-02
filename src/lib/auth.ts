@@ -5,27 +5,13 @@ import { NextAuthOptions } from "next-auth";
 import { Role } from "@prisma/client";
 import { compare } from 'bcryptjs';
 
-// Étendre les types de next-auth
-declare module "next-auth" {
-  interface User {
-    id: string;
-    role: Role;
-  }
-  interface Session {
-    user: {
-      id: string;
-      role: Role;
-      email: string;
-      name?: string | null;
-    }
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-    role: Role;
-  }
+interface UserWithPassword {
+  id: string;
+  email: string;
+  name: string | null;
+  password: string;
+  role: Role;
+  image: string | null;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -46,7 +32,7 @@ export const authOptions: NextAuthOptions = {
           where: {
             email: credentials.email
           }
-        });
+        }) as UserWithPassword | null;
 
         if (!user || !user.password) {
           return null;
@@ -62,7 +48,8 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name || '',
-          role: user.role
+          role: user.role,
+          image: user.image || null
         };
       }
     })
@@ -78,12 +65,15 @@ export const authOptions: NextAuthOptions = {
       if (session?.user) {
         session.user.id = token.sub as string;
         session.user.role = token.role as Role;
+        session.user.name = session.user.name || '';
+        session.user.image = token.picture || null;
       }
       return session;
     },
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
+        token.picture = user.image;
       }
       return token;
     }
