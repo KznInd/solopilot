@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { NextAuthOptions } from "next-auth";
 import { Role } from "@prisma/client";
+import { compare } from 'bcryptjs';
 
 // Étendre les types de next-auth
 declare module "next-auth" {
@@ -32,14 +33,14 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Mot de passe", type: "password" }
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email et mot de passe requis");
+          return null;
         }
 
         const user = await prisma.user.findUnique({
@@ -49,23 +50,21 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user || !user.password) {
-          throw new Error("Email ou mot de passe incorrect");
+          return null;
         }
 
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
+        const isPasswordValid = await compare(credentials.password, user.password);
 
         if (!isPasswordValid) {
-          throw new Error("Email ou mot de passe incorrect");
+          return null;
         }
 
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
+          name: user.name || '',
           role: user.role,
+          image: user.image || null
         };
       }
     })
@@ -75,22 +74,20 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
-    error: "/login",
   },
   callbacks: {
+    async session({ session, token }) {
+      if (session?.user) {
+        session.user.id = token.sub as string;
+        session.user.role = token.role as string;
+      }
+      return session;
+    },
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
         token.role = user.role;
       }
       return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-      }
-      return session;
     }
   }
 }; 
