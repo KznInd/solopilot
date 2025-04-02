@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String
+  role          Role      @default(USER)
+  department    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts            Account[]
+  sessions            Session[]
+  createdTasks        Task[]       @relation("CreatedTasks")
+  assignedTasks       Task[]       @relation("AssignedTasks")
+  notes               Note[]       @relation("CreatedNotes")
+  attachments         Attachment[] @relation("CreatedAttachments")
+  comments            Comment[]
+  createdTickets      Ticket[]     @relation("TicketCreator")
+  assignedTickets     Ticket[]     @relation("TicketAssignee")
+  createdEvents       Event[]      @relation("CreatedEvents")
+  eventParticipations UserEvent[]  @relation("UserEventParticipations")
+  ownedProjects       Project[]    @relation("ProjectOwner")
+  teamMemberships     TeamMember[]
+  sentMessages        Message[]    @relation("SentMessages")
+  receivedMessages    Message[]    @relation("ReceivedMessages")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  priority    Priority
+  dueDate     DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  ownerId     String
+  startDate   DateTime?
+  attachments Attachment[]
+  comments    Comment[]
+  events      Event[]
+  owner       User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  tasks       Task[]
+  teamMembers TeamMember[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  role      TeamRole @default(MEMBER)
+  userId    String
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, projectId])
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    Priority
+  dueDate     DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  projectId   String
+  creatorId   String
+  assigneeId  String?
+  notes       Note[]
+  attachments Attachment[]
+  comments    Comment[]
+  events      Event[]
+  assignee    User?        @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  creator     User         @relation("CreatedTasks", fields: [creatorId], references: [id])
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([assigneeId])
+  @@index([creatorId])
+  @@index([projectId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  projectId String?
+  taskId    String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([taskId])
+}
+
+model Ticket {
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  status      TicketStatus @default(OPEN)
+  priority    Priority     @default(MEDIUM)
+  type        TicketType   @default(TECHNICAL)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  userId      String
+  assigneeId  String?
+  assignee    User?        @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  user        User         @relation("TicketCreator", fields: [userId], references: [id])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  fileName  String
+  filePath  String
+  fileSize  Int
+  fileType  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+  creator   User     @relation("CreatedAttachments", fields: [creatorId], references: [id])
+  creatorId String
+
+  @@index([taskId])
+  @@index([projectId])
+  @@index([creatorId])
+}
+
+model Event {
+  id           String      @id @default(cuid())
+  title        String
+  description  String?
+  startDate    DateTime
+  endDate      DateTime
+  type         EventType
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  creator      User        @relation("CreatedEvents", fields: [creatorId], references: [id])
+  creatorId    String
+  project      Project?    @relation(fields: [projectId], references: [id])
+  projectId    String?
+  task         Task?       @relation(fields: [taskId], references: [id])
+  taskId       String?
+  participants UserEvent[]
+
+  @@index([creatorId])
+  @@index([projectId])
+  @@index([taskId])
+}
+
+model UserEvent {
+  id        String                   @id @default(cuid())
+  userId    String
+  eventId   String
+  status    EventParticipationStatus @default(PENDING)
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+  event     Event                    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User                     @relation("UserEventParticipations", fields: [userId], references: [id])
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String
+  creator   User     @relation("CreatedNotes", fields: [creatorId], references: [id])
+  creatorId String
+
+  @@index([taskId])
+  @@index([creatorId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  senderId  String
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId String
+  receiver  User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  read      Boolean  @default(false)
+  type      String   @default("text") // text, image, file
+  reactions Json?    // Stockage des réactions en JSON
+
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketType {
+  TECHNICAL
+  BILLING
+  FEATURE_REQUEST
+  OTHER
+}
+
+enum EventType {
+  MEETING
+  TASK
+  PROJECT
+  OTHER
+}
+
+enum EventParticipationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
